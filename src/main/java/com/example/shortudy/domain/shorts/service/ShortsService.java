@@ -10,6 +10,7 @@ import com.example.shortudy.domain.shorts.dto.ShortsUpdateRequest;
 import com.example.shortudy.domain.shorts.entity.Shorts;
 import com.example.shortudy.domain.shorts.entity.ShortsStatus;
 import com.example.shortudy.domain.shorts.entity.ShortsVisibility;
+import com.example.shortudy.domain.shorts.repository.ShortsInspectionResultsRepository;
 import com.example.shortudy.domain.shorts.repository.ShortsRepository;
 import com.example.shortudy.global.config.S3Service;
 import com.example.shortudy.global.error.BaseException;
@@ -49,14 +50,24 @@ public class ShortsService {
     // 숏츠 삭제 시 댓글/좋아요도 다 날리기 위해 추가
     private final CommentRepository commentRepository;
     private final ShortsLikeRepository shortsLikeRepository;
+    private final ShortsInspectionResultsRepository shortsInspectionResultsRepository;
 
-    public ShortsService(ShortsRepository shortsRepository, CategoryRepository categoryRepository, KeywordService keywordService, S3Service s3Service, CommentRepository commentRepository, ShortsLikeRepository shortsLikeRepository) {
+    public ShortsService(
+            ShortsRepository shortsRepository,
+            CategoryRepository categoryRepository,
+            KeywordService keywordService,
+            S3Service s3Service,
+            CommentRepository commentRepository,
+            ShortsLikeRepository shortsLikeRepository,
+            ShortsInspectionResultsRepository shortsInspectionResultsRepository
+    ) {
         this.shortsRepository = shortsRepository;
         this.categoryRepository = categoryRepository;
         this.keywordService = keywordService;
         this.s3Service = s3Service;
         this.commentRepository = commentRepository;
         this.shortsLikeRepository = shortsLikeRepository;
+        this.shortsInspectionResultsRepository = shortsInspectionResultsRepository;
     }
 
 
@@ -163,6 +174,7 @@ public class ShortsService {
     private void deleteShortsCascade(Long shortsId) {
         shortsLikeRepository.hardDeleteAllByShortsId(shortsId);
         commentRepository.deleteByShortsId(shortsId);
+        shortsInspectionResultsRepository.deleteByShortsId(shortsId);
         shortsRepository.deleteById(shortsId);
     }
 

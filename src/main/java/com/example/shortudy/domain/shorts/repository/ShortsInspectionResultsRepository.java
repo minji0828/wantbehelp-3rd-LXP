@@ -12,4 +12,6 @@ public interface ShortsInspectionResultsRepository extends JpaRepository<ShortsI
 
     // ✅ N+1 방지용
     List<ShortsInspectionResults> findByShortsIdIn(Collection<Long> shortsIds);
+
+    void deleteByShortsId(Long shortsId);
 }
