@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:shortudy;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+jwt:
+  secret: dGVzdC1qd3Qtc2VjcmV0LWZvci1sb2NhbC10ZXN0cy1tdXN0LWJlLWxvbmc=
+  access-expiration: 3600000
+  refresh-expiration: 1209600000
+
+aws:
+  region: ap-northeast-2
+  s3:
+    bucket: shortudy-test
+  credentials:
+    access-key: test-access-key
+    secret-key: test-secret-key
+
+app:
+  cors:
+    allowed-origins: http://localhost:3000,http://localhost:5173,https://shortudy.vercel.app

@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -76,10 +77,11 @@ public class ShortsQueryService {
     /**
      * 내 쇼츠 조회 - 내가 작성한 숏츠 목록을 집계 데이터와 함께 조회합니다.
      */
-    public Page<ShortsResponse> getMyShorts(Long userId, Pageable pageable) {
+    public Page<ShortsStatusDescriptionResponse> getMyShorts(Long userId, Pageable pageable) {
         Page<ShortsResponse> responses = shortsRepository.findMyResponses(userId, pageable);
         Page<ShortsResponse> enriched = enrichAll(responses);
-        return fillKeywords(enriched);
+        Page<ShortsResponse> responsesWithKeywords = fillKeywords(enriched);
+        return fillInspectionDescriptions(responsesWithKeywords);
     }
 
     /**
@@ -172,5 +174,37 @@ public class ShortsQueryService {
                 original.commentCount(), original.createdAt(), original.updatedAt(),
                 original.isLiked()
         );
+    }
+
+    private Page<ShortsStatusDescriptionResponse> fillInspectionDescriptions(Page<ShortsResponse> responses) {
+        if (responses.isEmpty()) {
+            return responses.map(response -> ShortsStatusDescriptionResponse.of(response, resolveStatusDescription(response.status(), null)));
+        }
+
+        List<Long> shortsIds = responses.stream().map(ShortsResponse::shortsId).toList();
+        Map<Long, ShortsInspectionResults> inspectionResultsByShortsId = shortsInspectionResultsRepository.findByShortsIdIn(shortsIds).stream()
+                .collect(Collectors.toMap(
+                        inspectionResults -> inspectionResults.getShorts().getId(),
+                        Function.identity()
+                ));
+
+        return responses.map(response -> {
+            ShortsInspectionResults inspectionResults = inspectionResultsByShortsId.get(response.shortsId());
+            String description = resolveStatusDescription(response.status(), inspectionResults);
+            return ShortsStatusDescriptionResponse.of(response, description);
+        });
+    }
+
+    private String resolveStatusDescription(ShortsStatus shortsStatus, ShortsInspectionResults inspectionResults) {
+        if (inspectionResults != null && inspectionResults.getReason() != null && !inspectionResults.getReason().isBlank()) {
+            return inspectionResults.getReason();
+        }
+
+        return switch (shortsStatus) {
+            case PENDING -> "업로드가 접수되었습니다.";
+            case AI_CHECK -> "AI 검수가 진행 중입니다.";
+            case PUBLISHED -> "게시된 숏츠입니다.";
+            case REJECT -> "검수 결과 반려되었습니다.";
+        };
     }
 }

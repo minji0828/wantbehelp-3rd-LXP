@@ -259,4 +259,24 @@ public class ShortsRecommendationService {
                 .map(sk -> sk.getKeyword().getDisplayName())
                 .collect(Collectors.toSet());
     }
+
+    private Map<Long, Long> getCommentCounts(List<Long> shortsIds) {
+        if (shortsIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return commentRepository.countAllCommentsByShortsIds(shortsIds).stream()
+                .collect(Collectors.toMap(
+                        projection -> projection.getShortsId(),
+                        projection -> projection.getCnt()
+                ));
+    }
+
+    private Set<Long> getLikedShortsIds(Long currentUserId, List<Long> shortsIds) {
+        if (currentUserId == null || shortsIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return shortsLikeRepository.findByUserIdAndShortsIdIn(currentUserId, shortsIds).stream()
+                .map(like -> like.getShorts().getId())
+                .collect(Collectors.toSet());
+    }
 }

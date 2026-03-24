@@ -14,13 +14,12 @@ import com.example.shortudy.domain.user.entity.User;
 import com.example.shortudy.domain.user.entity.UserRole;
 import com.example.shortudy.domain.user.repository.UserRepository;
 import com.example.shortudy.global.config.JpaAuditConfig;
+import com.example.shortudy.global.config.S3Service;
 import com.example.shortudy.global.error.BaseException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -42,6 +41,9 @@ import static org.mockito.Mockito.*;
 @Import({ShortsLikeService.class, JpaAuditConfig.class})
 @DisplayName("Like Service 테스트")
 class ShortsLikeServiceTest {
+
+    @MockitoBean
+    private S3Service s3Service;
 
     @Autowired
     private ShortsLikeService shortsLikeService;

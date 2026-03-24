@@ -6,6 +6,7 @@ import com.example.shortudy.global.security.handler.CustomAccessDeniedHandler;
 import com.example.shortudy.global.security.handler.CustomAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -15,8 +16,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CharacterEncodingFilter;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -25,11 +31,21 @@ public class SecurityConfig {
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
     private final CustomAccessDeniedHandler accessDeniedHandler;
+    private final List<String> allowedOrigins;
 
-    public SecurityConfig(JwtTokenProvider jwtTokenProvider, CustomAuthenticationEntryPoint authenticationEntryPoint, CustomAccessDeniedHandler accessDeniedHandler) {
+    public SecurityConfig(
+            JwtTokenProvider jwtTokenProvider,
+            CustomAuthenticationEntryPoint authenticationEntryPoint,
+            CustomAccessDeniedHandler accessDeniedHandler,
+            @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173,https://shortudy.vercel.app}") String allowedOrigins
+    ) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
+        this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
     }
 
     @Bean
@@ -48,8 +64,7 @@ public class SecurityConfig {
                 // 서버에서 세션방법을 채택하지 않고 JWT 토큰으로 인증을 하기 때문에
                 // 브라우저 쿠키를 가로채서 공격하는 CSRF 방어 기능은 꺼두겠다.
                 .csrf(AbstractHttpConfigurer::disable)
-                // TODO CORS 설정이 필요하면 수정
-//                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 // 세션을 만들지 않겠다(STATELESS) -> 서버가 사용자의 상태를 저장하지 않고, 오직 토큰만 보고 판단
                 .sessionManagement(session -> {session.sessionCreationPolicy(SessionCreationPolicy.STATELESS);})
                 // 요청 권한 제어 -> 누구에게 열어줄 것인가.
@@ -95,26 +110,17 @@ public class SecurityConfig {
         return http.build();
     }
 
-//    TODO CORS설정이 필요할 때 주석 해제
-//    @Bean
-//    public CorsConfigurationSource corsConfigurationSource() {
-//        CorsConfiguration configuration = new CorsConfiguration();
-//
-//        // 어떤 도메인에서 오는 요청을 허용할 것인가? -> 프론트엔드가 localhost:3000이라면 이를 명시
-//        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
-//
-//        // 어떤 HTTP 메서드를 허용할 것인가?
-//        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
-//
-//        // 어떤 헤더를 허용할 것인가? -> Authorization 헤더에 토큰을 담아 보낼 것이므로 반드시 포함되어야 함
-//        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Cache-Control"));
-//
-//        // 내 서버가 보낸 쿠키나 인증 정보를 프론트엔드가 자바스크립트로 읽을 수 있게 할 것인가? -> HttpOnly 쿠키나 Authorization 헤더를 사용하려면 true
-//        configuration.setAllowCredentials(true);
-//
-//        // 위 설정을 모든 경로(/**)에 적용하겠다.
-//        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-//        source.registerCorsConfiguration("/**", configuration);
-//        return source;
-//    }
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(allowedOrigins);
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Cache-Control", "Accept", "Origin"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 }
