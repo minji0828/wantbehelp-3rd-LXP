@@ -4,6 +4,12 @@
 
 S3 Presigned URL 업로드, UploadSession 임시 상태 관리, 공개/검수 상태 분리, Redis 기반 조회수 집계를 구현한 숏폼 학습 플랫폼 백엔드입니다.
 
+### 빠른 검토 순서
+
+1. [핵심 코드 바로가기](#5-핵심-코드-바로가기)에서 S3 Presigned URL, UploadSession, 상태 분리, Redis 조회수 집계를 먼저 확인합니다.
+2. [아키텍처](#6-아키텍처)에서 업로드 수명주기와 조회수 flush 흐름을 확인합니다.
+3. [한계와 개선점](#12-한계와-개선점)에서 운영 지표 API처럼 근거가 부족한 범위를 확인합니다.
+
 ## 2. 내가 맡은 역할
 
 팀 프로젝트 중 백엔드/인프라 중심 담당 범위입니다.
@@ -45,7 +51,7 @@ S3 Presigned URL 업로드, UploadSession 임시 상태 관리, 공개/검수 �
 | unique view 처리 | [`ShortsViewCountService.increaseViewCount`](https://github.com/minji0828/wantbehelp-3rd-LXP/blob/refactor/shorts/src/main/java/com/example/shortudy/domain/shorts/view/service/ShortsViewCountService.java#L18-L41) | 24시간 TTL 기반 unique visitor만 조회수 증가에 반영합니다. |
 | Redis -> DB flush | [`ShortsViewCountService.flushViewCounts`](https://github.com/minji0828/wantbehelp-3rd-LXP/blob/refactor/shorts/src/main/java/com/example/shortudy/domain/shorts/view/service/ShortsViewCountService.java#L44-L56) | Redis pending count를 DB에 반영한 뒤 pending 상태를 정리합니다. |
 | 조회 결과 병합 | [`ShortsQueryService.enrich`](https://github.com/minji0828/wantbehelp-3rd-LXP/blob/refactor/shorts/src/main/java/com/example/shortudy/domain/shorts/service/ShortsQueryService.java#L142-L176) | DB view count와 Redis pending count를 합쳐 near-real-time 조회수를 제공합니다. |
-| BackOffice 지표 API | 미확인 | 현재 checkout에서 관련 코드를 확인하지 못해 구현 완료로 주장하지 않습니다. |
+| 운영 지표 API | 미확인 | 현재 checkout에서 관련 코드를 확인하지 못해 구현 완료로 주장하지 않습니다. |
 
 ## 6. 아키텍처
 
@@ -196,11 +202,11 @@ set -a && source .env && set +a
 | 업로드 완료와 실제 S3 객체 상태 불일치 가능 | Direct upload는 클라이언트 완료 요청에 의존 | UploadSession을 만들고 완료 API에서 owner/만료/idempotency 검증 | 파일 전송과 게시 상태는 분리해야 함 |
 | 업로드 완료가 곧 공개가 되는 문제 | 파일 존재와 콘텐츠 검수는 다른 도메인 상태 | `status`와 `visibility` 분리 | 업로드 파이프라인과 노출 정책을 섞으면 안 됨 |
 | 조회수 DB write 경합 | 매 요청마다 DB update 시 쓰기 부하 증가 | Redis pending count + scheduled flush | 강한 정합성이 필요 없는 데이터는 반영 전략을 분리할 수 있음 |
-| BackOffice 지표 API 근거 부족 | 현재 branch에서 관련 코드 미확인 | README에서는 구현 완료로 주장하지 않음 | 포트폴리오 README는 확인 가능한 코드만 링크해야 함 |
+| 운영 지표 API 근거 부족 | 현재 branch에서 관련 코드 미확인 | README에서는 구현 완료로 주장하지 않음 | 포트폴리오 README는 확인 가능한 코드만 링크해야 함 |
 
 ## 12. 한계와 개선점
 
-- BackOffice 지표 API는 현재 checkout에서 확인하지 못했습니다. 코드가 다른 branch/module에 있다면 별도 근거 링크가 필요합니다.
+- 운영 지표 API는 현재 checkout에서 확인하지 못했습니다. 코드가 다른 branch/module에 있다면 별도 근거 링크가 필요합니다.
 - S3 실제 객체 존재 검증은 S3 Event Notification 또는 HEAD Object 확인으로 보강할 수 있습니다.
 - Redis pending count flush 실패 시 재시도/보상 전략을 더 명확히 문서화해야 합니다.
 - 테스트는 좋아요 도메인 중심으로 확인되며 upload/Redis 조회수 도메인 테스트 보강이 필요합니다.
